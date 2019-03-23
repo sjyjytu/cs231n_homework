@@ -115,34 +115,36 @@ class LinearClassifier(object):
         - loss as a single float
         - gradient with respect to self.W; an array of the same shape as W
         """
-        ddd = 0.01
-        L = 0.0
-        data_size = X_batch.shape[1]
-        # develop wij + 0.01
-        dW = [[self.W.copy() for k in range(self.W.shape[0])] for j in range(self.W.shape[1])]
-        L_dh = np.zeros(self.W.shape)
-        for i in range(self.W.shape[0]):
-            for j in range(self.W.shape[1]):
-                dW[i][j][i][j] += ddd
-        # compute the L and L + dh
-        for i in range(data_size):
-            yi = y_batch[i]
-            for j in range(self.W.shape[0]):
-                L += max(0, self.W[j, :].dot(X_batch[:, i]) - self.W[yi, :].dot(X_batch[:, i]) + 1)
-                for m in range(self.W.shape[0]):
-                    for n in range(self.W.shape[1]):
-                        L_dh[i][j] += max(0, dW[m][n][j, :].dot(X_batch[:, i]) - dW[m][n][yi, :].dot(X_batch[:, i]) + 1)
 
-            L_dh -= 1
-            L -= 1  # because above contain the condition yi == j, here minus it.
+        # below I use such a stupid way to compute loss and dW:
+        # ddd = 0.01
+        # L = 0.0
+        # data_size = X_batch.shape[1]
+        # # develop wij + 0.01
+        # dW = [[self.W.copy() for k in range(self.W.shape[0])] for j in range(self.W.shape[1])]
+        # L_dh = np.zeros(self.W.shape)
+        # for i in range(self.W.shape[0]):
+        #     for j in range(self.W.shape[1]):
+        #         dW[i][j][i][j] += ddd
+        # # compute the L and L + dh
+        # for i in range(data_size):
+        #     yi = y_batch[i]
+        #     for j in range(self.W.shape[0]):
+        #         L += max(0, self.W[j, :].dot(X_batch[:, i]) - self.W[yi, :].dot(X_batch[:, i]) + 1)
+        #         for m in range(self.W.shape[0]):
+        #             for n in range(self.W.shape[1]):
+        #                 L_dh[i][j] += max(0, dW[m][n][j, :].dot(X_batch[:, i]) - dW[m][n][yi, :].dot(X_batch[:, i]) + 1)
+        #
+        #     L_dh -= 1
+        #     L -= 1  # because above contain the condition yi == j, here minus it.
 
-        L = L / data_size + reg * np.sum(np.square(self.W))
-        gradient = np.zeros([m, n])
-        for m in range(self.W.shape[0]):
-            for n in range(self.W.shape[1]):
-                L_dh[m][n] = L_dh[m][n] / data_size + reg * np.sum(np.square(dW[m][n]))
-                gradient[m][n] = (L_dh[m][n] - L) / ddd
-        return (L, gradient)
+        # L = L / data_size + reg * np.sum(np.square(self.W))
+        # gradient = np.zeros([m, n])
+        # for m in range(self.W.shape[0]):
+        #     for n in range(self.W.shape[1]):
+        #         L_dh[m][n] = L_dh[m][n] / data_size + reg * np.sum(np.square(dW[m][n]))
+        #         gradient[m][n] = (L_dh[m][n] - L) / ddd
+        # return (L, gradient)
 
 
 class LinearSVM(LinearClassifier):
