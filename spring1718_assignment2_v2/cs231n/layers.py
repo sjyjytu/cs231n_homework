@@ -58,7 +58,7 @@ def affine_backward(dout, cache):
     N = x.shape[0]
     dx = dout.dot(w.T).reshape(x.shape)
     dw = x.reshape((N, -1)).T.dot(dout)
-    db = np.sum(dout, axis=0) / N
+    db = np.sum(dout, axis=0)
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -241,8 +241,8 @@ def batchnorm_backward(dout, cache):
     N = dout.shape[0]
     gamma, eps, stable_standard_variance, x_ = cache
     dx = dout * gamma / stable_standard_variance
-    dgamma = np.sum(dout*x_, axis=0) / N
-    dbeta = np.sum(dout, axis=0) / N
+    dgamma = np.sum(dout*x_, axis=0)
+    dbeta = np.sum(dout, axis=0)
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
