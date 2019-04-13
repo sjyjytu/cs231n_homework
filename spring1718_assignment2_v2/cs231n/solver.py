@@ -181,7 +181,6 @@ class Solver(object):
         # Compute loss and gradient
         loss, grads = self.model.loss(X_batch, y_batch)
         self.loss_history.append(loss)
-
         # Perform a parameter update
         for p, w in self.model.params.items():
             dw = grads[p]

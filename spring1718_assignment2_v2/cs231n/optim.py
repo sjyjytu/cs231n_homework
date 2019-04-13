@@ -67,6 +67,8 @@ def sgd_momentum(w, dw, config=None):
     # the next_w variable. You should also use and update the velocity v.     #
     ###########################################################################
     v = mu * v - learning_rate * dw
+    next_w = w + v
+    config['velocity'] = v
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -95,12 +97,18 @@ def rmsprop(w, dw, config=None):
     config.setdefault('cache', np.zeros_like(w))
 
     next_w = None
+    learning_rate = config['learning_rate']
+    decay_rate = config['decay_rate']
+    epsilon = config['epsilon']
+    cache = config['cache']
     ###########################################################################
     # TODO: Implement the RMSprop update formula, storing the next value of w #
     # in the next_w variable. Don't forget to update cache value stored in    #
     # config['cache'].                                                        #
     ###########################################################################
-    pass
+    cache = decay_rate * cache + (1 - decay_rate) * dw * dw
+    next_w = w - learning_rate * dw / (np.sqrt(cache) + epsilon)
+    config['cache'] = cache
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -131,6 +139,14 @@ def adam(w, dw, config=None):
     config.setdefault('v', np.zeros_like(w))
     config.setdefault('t', 0)
 
+    learning_rate = config['learning_rate']
+    beta1 = config['beta1']
+    beta2 = config['beta2']
+    epsilon = config['epsilon']
+    m = config['m']
+    v = config['v']
+    t = config['t']
+
     next_w = None
     ###########################################################################
     # TODO: Implement the Adam update formula, storing the next value of w in #
@@ -140,9 +156,17 @@ def adam(w, dw, config=None):
     # NOTE: In order to match the reference output, please modify t _before_  #
     # using it in any calculations.                                           #
     ###########################################################################
-    pass
+    t = t + 1
+    m = beta1*m + (1-beta1)*dw
+    mt = m / (1-beta1**t)
+    v = beta2*v + (1-beta2) * dw**2
+    vt = v / (1-beta2**t)
+    next_w = w - learning_rate * mt / (np.sqrt(vt) + epsilon)
+
+    config['m'] = m
+    config['v'] = v
+    config['t'] = t
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
-
     return next_w, config
