@@ -1,4 +1,4 @@
 import numpy as np
-c = np.zeros((3,4))
-a = np.random.rand(*(2,2))
-print(a)
+a = np.array([[1,2],[3,4]])
+b = np.array([[2]])
+print(a==b)
