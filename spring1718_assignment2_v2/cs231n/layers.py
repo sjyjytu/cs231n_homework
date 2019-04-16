@@ -668,7 +668,11 @@ def spatial_batchnorm_forward(x, gamma, beta, bn_param):
     # vanilla version of batch normalization you implemented above.           #
     # Your implementation should be very short; ours is less than five lines. #
     ###########################################################################
-    pass
+    N, C, H, W = x.shape
+    tran_x = np.transpose(x,(1,0,2,3))
+    tran_x = tran_x.reshape(C, -1).T
+    out, cache = batchnorm_forward(tran_x, gamma, beta, bn_param)
+    out = np.transpose(out.T.reshape(C, N, H, W), (1, 0, 2, 3))
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -698,7 +702,11 @@ def spatial_batchnorm_backward(dout, cache):
     # vanilla version of batch normalization you implemented above.           #
     # Your implementation should be very short; ours is less than five lines. #
     ###########################################################################
-    pass
+    N, C, H, W = dout.shape
+    tran_dout = np.transpose(dout, (1, 0, 2, 3))
+    tran_dout = tran_dout.reshape(C, -1).T
+    dx, dgamma, dbeta = batchnorm_backward_alt(tran_dout, cache)
+    dx = np.transpose(dx.T.reshape(C, N, H, W), (1, 0, 2, 3))
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -734,7 +742,18 @@ def spatial_groupnorm_forward(x, gamma, beta, G, gn_param):
     # the bulk of the code is similar to both train-time batch normalization  #
     # and layer normalization!                                                # 
     ###########################################################################
-    pass
+    N, C, H, W = x.shape
+    tran_x = x.reshape(N*G,-1)
+    N_, D_ = tran_x.shape
+    mu = np.sum(tran_x, axis=1, keepdims=True) / D_  # N_ x 1
+    sigama = np.sum(np.square(tran_x - mu), axis=1, keepdims=True) / D_  # (N_, 1)
+    stable_standard_variance = np.sqrt(sigama + eps)
+    norm_x = tran_x - mu
+    x_ = norm_x / stable_standard_variance
+
+    x__ = x_.reshape(x.shape)
+    cache = (gamma, G, eps, stable_standard_variance, norm_x, x_, x__)
+    out = gamma *x__ + beta
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -760,7 +779,19 @@ def spatial_groupnorm_backward(dout, cache):
     # TODO: Implement the backward pass for spatial group normalization.      #
     # This will be extremely similar to the layer norm implementation.        #
     ###########################################################################
-    pass
+    gamma, G, eps, stable_standard_variance, norm_x, x_, x__ = cache
+    N, C, H, W = dout.shape
+    N_, D_ = x_.shape
+
+    dgamma = np.sum(dout * x__, axis=(0,2,3),keepdims=True)
+    dbeta = np.sum(dout, axis=(0,2,3),keepdims=True)
+
+    dx__ = dout * gamma[None,:,None,None]
+    dx_ = dx__.reshape(N_, D_)
+    dmu = -np.sum(dx_ / stable_standard_variance, axis=1, keepdims=True)
+    dsigma = -0.5 * np.sum(dx_ * x_ / np.square(stable_standard_variance), axis=1, keepdims=True)
+    dx = dx_ / stable_standard_variance + dsigma * 2 * norm_x / D_ + dmu / D_
+    dx = dx.reshape(dout.shape)
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
