@@ -266,7 +266,17 @@ def lstm_step_forward(x, prev_h, prev_c, Wx, Wh, b):
     # TODO: Implement the forward pass for a single timestep of an LSTM.        #
     # You may want to use the numerically stable sigmoid implementation above.  #
     #############################################################################
-    pass
+    N, D = x.shape
+    H = prev_h.shape[1]
+    A = x.dot(Wx)+prev_h.dot(Wh)+b
+    i_gate = sigmoid(A[:, :H])
+    f_gate = sigmoid(A[:, H:2*H])
+    o_gate = sigmoid(A[:, 2*H:3*H])
+    g_gate = np.tanh(A[:, 3*H:4*H])
+    next_c = f_gate*prev_c+i_gate*g_gate
+    tanh_c = np.tanh(next_c)
+    next_h = o_gate*tanh_c
+    cache = (x, Wx, prev_h, Wh, f_gate, tanh_c, prev_c, i_gate, g_gate, o_gate, next_c)
     ##############################################################################
     #                               END OF YOUR CODE                             #
     ##############################################################################
@@ -298,7 +308,24 @@ def lstm_step_backward(dnext_h, dnext_c, cache):
     # HINT: For sigmoid and tanh you can compute local derivatives in terms of  #
     # the output value from the nonlinearity.                                   #
     #############################################################################
-    pass
+    (x, Wx, prev_h, Wh, f_gate, tanh_c, prev_c, i_gate, g_gate, o_gate, next_c) = cache
+    dnext_c += dnext_h * o_gate * (1 - np.square(tanh_c))
+    do_gate = dnext_h * tanh_c
+    dprev_c = dnext_c * f_gate
+    df_gate = dnext_c * prev_c
+    di_gate = dnext_c * g_gate
+    dg_gate = dnext_c * i_gate
+    dai = di_gate * i_gate * (1 - i_gate)
+    daf = df_gate * f_gate * (1 - f_gate)
+    dao = do_gate * o_gate * (1 - o_gate)
+    dag = dg_gate * (1 - np.square(g_gate))
+    dA = np.concatenate((dai, daf, dao, dag), axis=1)
+    dx = dA.dot(Wx.T)
+    dWx = x.T.dot(dA)
+    dprev_h = dA.dot(Wh.T)
+    dWh = prev_h.T.dot(dA)
+    db = np.sum(dA, axis=0)
+    # dprev_c += dprev_h*o_gate*(1-np.tanh(prev_c)**2)
     ##############################################################################
     #                               END OF YOUR CODE                             #
     ##############################################################################
@@ -333,7 +360,19 @@ def lstm_forward(x, h0, Wx, Wh, b):
     # TODO: Implement the forward pass for an LSTM over an entire timeseries.   #
     # You should use the lstm_step_forward function that you just defined.      #
     #############################################################################
-    pass
+    N, T, D = x.shape
+    H = h0.shape[1]
+    prev_h = h0
+    h = np.zeros((N, T, H))
+    cache = []
+    prev_c = np.zeros((N, H))
+    for t in range(T):
+        next_h, next_c, cur_cache = lstm_step_forward(x[:, t, :], prev_h, prev_c, Wx, Wh, b)
+        h[:, t, :] = next_h
+        cache.append(cur_cache)
+        prev_c = next_c
+        prev_h = next_h
+    cache.append(D)
     ##############################################################################
     #                               END OF YOUR CODE                             #
     ##############################################################################
@@ -361,7 +400,23 @@ def lstm_backward(dh, cache):
     # TODO: Implement the backward pass for an LSTM over an entire timeseries.  #
     # You should use the lstm_step_backward function that you just defined.     #
     #############################################################################
-    pass
+    N, T, H = dh.shape
+    dprev_h = np.zeros((N, H))
+    dprev_c = np.zeros((N, H))
+    D = int(cache[-1])
+    dx = np.zeros((N, T, D))
+    dWx = np.zeros((D, 4*H))
+    dWh = np.zeros((H, 4*H))
+    db = np.zeros((4*H,))
+    for t in range(T-1,-1,-1):
+        dnext_h = dh[:, t, :] + dprev_h
+        dnext_c = dprev_c
+        cur_cache = cache[t]
+        dx[:, t, :], dprev_h, dprev_c, dWx_, dWh_, db_ = lstm_step_backward(dnext_h, dnext_c, cur_cache)
+        dWx += dWx_
+        dWh += dWh_
+        db += db_
+    dh0 = dprev_h
     ##############################################################################
     #                               END OF YOUR CODE                             #
     ##############################################################################

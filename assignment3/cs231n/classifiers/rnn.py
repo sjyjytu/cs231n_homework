@@ -145,12 +145,18 @@ class CaptioningRNN(object):
         V, W = W_embed.shape
         h0, aff_cache = affine_forward(features,W_proj,b_proj)
         captions_in_vec, embed_cache = word_embedding_forward(captions_in, W_embed)
-        rnn_out, rnn_cache = rnn_forward(captions_in_vec, h0, Wx, Wh, b)
+        if self.cell_type == 'lstm':
+            rnn_out, rnn_cache = lstm_forward(captions_in_vec, h0, Wx, Wh, b)
+        else:
+            rnn_out, rnn_cache = rnn_forward(captions_in_vec, h0, Wx, Wh, b)
         temporal_out, temporal_cache = temporal_affine_forward(rnn_out, W_vocab, b_vocab)
         loss, dtemporal_out = temporal_softmax_loss(temporal_out, captions_out, mask)
 
         drnn_out, grads['W_vocab'], grads['b_vocab'] = temporal_affine_backward(dtemporal_out, temporal_cache)
-        dcaptions_in_vec, dh0, grads['Wx'], grads['Wh'], grads['b'] = rnn_backward(drnn_out, rnn_cache)
+        if self.cell_type == 'lstm':
+            dcaptions_in_vec, dh0, grads['Wx'], grads['Wh'], grads['b'] = lstm_backward(drnn_out, rnn_cache)
+        else:
+            dcaptions_in_vec, dh0, grads['Wx'], grads['Wh'], grads['b'] = rnn_backward(drnn_out, rnn_cache)
         grads['W_embed'] = word_embedding_backward(dcaptions_in_vec, embed_cache)
         dfeatures, grads['W_proj'], grads['b_proj'] = affine_backward(dh0, aff_cache)
         ############################################################################
@@ -218,13 +224,19 @@ class CaptioningRNN(object):
         # you are using an LSTM, initialize the first cell state to zeros.        #
         ###########################################################################
         h0, _ = affine_forward(features, W_proj, b_proj)
-        input_word = self._start
+        input_word = np.array([self._start for i in range(N)])
         prev_h = h0
+        prev_c = np.zeros((N, W_proj.shape[1]))
         captions[:, 0] = input_word
         for t in range(1, max_length):
             caption_in_vec, _ = word_embedding_forward(input_word, W_embed)
-            next_h, _ = rnn_step_forward(caption_in_vec, prev_h, Wx, Wh, b)
-            prev_h = next_h
+            if self.cell_type == 'lstm':
+                next_h, next_c, _ = lstm_step_forward(caption_in_vec, prev_h, prev_c, Wx, Wh, b)
+                prev_c = next_c
+                prev_h = next_h
+            else:
+                next_h, _ = rnn_step_forward(caption_in_vec, prev_h, Wx, Wh, b)
+                prev_h = next_h
             adapt_next_h = next_h.reshape(next_h.shape[0], 1, next_h.shape[1])
             temporal_out, _ = temporal_affine_forward(adapt_next_h, W_vocab, b_vocab)
             temporal_out = temporal_out.reshape(temporal_out.shape[0], temporal_out.shape[2])
